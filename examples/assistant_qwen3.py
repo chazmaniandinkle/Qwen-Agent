@@ -7,16 +7,16 @@ from qwen_agent.utils.output_beautify import typewriter_print
 
 
 def init_agent_service():
-    llm_cfg = {
-        # Use the model service provided by DashScope:
-        'model': 'qwen3-235b-a22b',
-        'model_type': 'qwen_dashscope',
+    # llm_cfg = {
+    #     # Use the model service provided by DashScope:
+    #     'model': 'qwen3-235b-a22b',
+    #     'model_type': 'qwen_dashscope',
 
-        # 'generate_cfg': {
-        #     # When using the Dash Scope API, pass the parameter of whether to enable thinking mode in this way
-        #     'enable_thinking': False,
-        # },
-    }
+    #     # 'generate_cfg': {
+    #     #     # When using the Dash Scope API, pass the parameter of whether to enable thinking mode in this way
+    #     #     'enable_thinking': False,
+    #     # },
+    # }
     # llm_cfg = {
     #     # Use the OpenAI-compatible model service provided by DashScope:
     #     'model': 'qwen3-235b-a22b',
@@ -30,35 +30,41 @@ def init_agent_service():
     #     #     },
     #     # },
     # }
-    # llm_cfg = {
-    #     # Use your own model service compatible with OpenAI API by vLLM/SGLang:
-    #     'model': 'Qwen/Qwen3-32B',
-    #     'model_server': 'http://localhost:8000/v1',  # api_base
-    #     'api_key': 'EMPTY',
-    #
-    #     'generate_cfg': {
-    #         # When using vLLM/SGLang OAI API, pass the parameter of whether to enable thinking mode in this way
-    #         'extra_body': {
-    #             'chat_template_kwargs': {'enable_thinking': False}
-    #         },
-    #
-    #         # Add: When the content is `<think>this is the thought</think>this is the answer`
-    #         # Do not add: When the response has been separated by reasoning_content and content
-    #         # This parameter will affect the parsing strategy of tool call
-    #         # 'thought_in_content': True,
-    #     },
-    # }
+    llm_cfg = {
+        # Use your own model service compatible with OpenAI API by vLLM/SGLang:
+        # 'model': 'qwen3-1.7b@q8_0',
+        'model': 'qwen3-0.6b@q8_0',
+        # 'model': 'qwen3-30b-a3b',
+        'model_server': 'http://localhost:1234/v1',  # api_base
+        'api_key': 'EMPTY',
+    
+        'generate_cfg': {
+            # When using vLLM/SGLang OAI API, pass the parameter of whether to enable thinking mode in this way
+            'extra_body': {
+                'chat_template_kwargs': {'enable_thinking': False}
+            },
+    
+            # Add: When the content is `<think>this is the thought</think>this is the answer`
+            # Do not add: When the response has been separated by reasoning_content and content
+            # This parameter will affect the parsing strategy of tool call
+            # 'thought_in_content': True,
+        },
+    }
     tools = [
         {
             'mcpServers': {  # You can specify the MCP configuration file
                 'time': {
                     'command': 'uvx',
-                    'args': ['mcp-server-time', '--local-timezone=Asia/Shanghai']
+                    'args': ['mcp-server-time', '--local-timezone=America/New_York']
                 },
                 'fetch': {
                     'command': 'uvx',
-                    'args': ['mcp-server-fetch']
-                }
+                    'args': ['mcp-server-fetch', '--ignore-robots-txt']
+                },
+                "context7": {
+                 "command": "npx",
+                 "args": ["-y", "@upstash/context7-mcp"]
+               }
             }
         },
         'code_interpreter',  # Built-in tools
