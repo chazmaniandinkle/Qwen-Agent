@@ -89,107 +89,112 @@ class WebUI:
         ) as demo:
             history = gr.State([])
             with ms.Application():
-                with gr.Row(elem_classes='container'):
-                    with gr.Column(scale=4):
-                        chatbot = mgr.Chatbot(value=convert_history_to_chatbot(messages=messages),
-                                              avatar_images=[
-                                                  self.user_config,
-                                                  self.agent_config_list,
-                                              ],
-                                              height=850,
-                                              avatar_image_width=80,
-                                              flushing=False,
-                                              show_copy_button=True,
-                                              latex_delimiters=[{
-                                                  'left': '\\(',
-                                                  'right': '\\)',
-                                                  'display': True
-                                              }, {
-                                                  'left': '\\begin{equation}',
-                                                  'right': '\\end{equation}',
-                                                  'display': True
-                                              }, {
-                                                  'left': '\\begin{align}',
-                                                  'right': '\\end{align}',
-                                                  'display': True
-                                              }, {
-                                                  'left': '\\begin{alignat}',
-                                                  'right': '\\end{alignat}',
-                                                  'display': True
-                                              }, {
-                                                  'left': '\\begin{gather}',
-                                                  'right': '\\end{gather}',
-                                                  'display': True
-                                              }, {
-                                                  'left': '\\begin{CD}',
-                                                  'right': '\\end{CD}',
-                                                  'display': True
-                                              }, {
-                                                  'left': '\\[',
-                                                  'right': '\\]',
-                                                  'display': True
-                                              }])
+                with gr.Tab("Chat"):
+                    with gr.Row(elem_classes='container'):
+                        with gr.Column(scale=4):
+                            chatbot = mgr.Chatbot(value=convert_history_to_chatbot(messages=messages),
+                                                  avatar_images=[
+                                                      self.user_config,
+                                                      self.agent_config_list,
+                                                  ],
+                                                  height=850,
+                                                  avatar_image_width=80,
+                                                  flushing=False,
+                                                  show_copy_button=True,
+                                                  latex_delimiters=[{
+                                                      'left': '\(',
+                                                      'right': '\)',
+                                                      'display': True
+                                                  }, {
+                                                      'left': '\begin{equation}',
+                                                      'right': '\end{equation}',
+                                                      'display': True
+                                                  }, {
+                                                      'left': '\begin{align}',
+                                                      'right': '\end{align}',
+                                                      'display': True
+                                                  }, {
+                                                      'left': '\begin{alignat}',
+                                                      'right': '\end{alignat}',
+                                                      'display': True
+                                                  }, {
+                                                      'left': '\begin{gather}',
+                                                      'right': '\end{gather}',
+                                                      'display': True
+                                                  }, {
+                                                      'left': '\begin{CD}',
+                                                      'right': '\end{CD}',
+                                                      'display': True
+                                                  }, {
+                                                      'left': '\[',
+                                                      'right': '\]',
+                                                      'display': True
+                                                  }])
 
-                        input = mgr.MultimodalInput(placeholder=self.input_placeholder,)
-                        audio_input = gr.Audio(
-                            sources=["microphone"],
-                            type="filepath"
-                        )
+                            input = mgr.MultimodalInput(placeholder=self.input_placeholder,)
+                            audio_input = gr.Audio(
+                                sources=["microphone"],
+                                type="filepath"
+                            )
 
-                    with gr.Column(scale=1):
+                        with gr.Column(scale=1):
+                            if len(self.agent_list) > 1:
+                                agent_selector = gr.Dropdown(
+                                    [(agent.name, i) for i, agent in enumerate(self.agent_list)],
+                                    label='Agents',
+                                    info='选择一个Agent',
+                                    value=0,
+                                    interactive=True,
+                                )
+
+                            agent_info_block = self._create_agent_info_block()
+
+                            agent_plugins_block = self._create_agent_plugins_block()
+
+                            if self.prompt_suggestions:
+                                gr.Examples(
+                                    label='推荐对话',
+                                    examples=self.prompt_suggestions,
+                                    inputs=[input],
+                                )
+
                         if len(self.agent_list) > 1:
-                            agent_selector = gr.Dropdown(
-                                [(agent.name, i) for i, agent in enumerate(self.agent_list)],
-                                label='Agents',
-                                info='选择一个Agent',
-                                value=0,
-                                interactive=True,
+                            agent_selector.change(
+                                fn=self.change_agent,
+                                inputs=[agent_selector],
+                                outputs=[agent_selector, agent_info_block, agent_plugins_block],
+                                queue=False,
                             )
 
-                        agent_info_block = self._create_agent_info_block()
-
-                        agent_plugins_block = self._create_agent_plugins_block()
-
-                        if self.prompt_suggestions:
-                            gr.Examples(
-                                label='推荐对话',
-                                examples=self.prompt_suggestions,
-                                inputs=[input],
-                            )
-
-                    if len(self.agent_list) > 1:
-                        agent_selector.change(
-                            fn=self.change_agent,
-                            inputs=[agent_selector],
-                            outputs=[agent_selector, agent_info_block, agent_plugins_block],
+                        input_promise = input.submit(
+                            fn=self.add_text,
+                            inputs=[input, audio_input, chatbot, history],
+                            outputs=[input, audio_input, chatbot, history],
                             queue=False,
                         )
 
-                    input_promise = input.submit(
-                        fn=self.add_text,
-                        inputs=[input, audio_input, chatbot, history],
-                        outputs=[input, audio_input, chatbot, history],
-                        queue=False,
-                    )
+                        if len(self.agent_list) > 1 and enable_mention:
+                            input_promise = input_promise.then(
+                                self.add_mention,
+                                [chatbot, agent_selector],
+                                [chatbot, agent_selector],
+                            ).then(
+                                self.agent_run,
+                                [chatbot, history, agent_selector],
+                                [chatbot, history, agent_selector],
+                            )
+                        else:
+                            input_promise = input_promise.then(
+                                self.agent_run,
+                                [chatbot, history],
+                                [chatbot, history],
+                            )
 
-                    if len(self.agent_list) > 1 and enable_mention:
-                        input_promise = input_promise.then(
-                            self.add_mention,
-                            [chatbot, agent_selector],
-                            [chatbot, agent_selector],
-                        ).then(
-                            self.agent_run,
-                            [chatbot, history, agent_selector],
-                            [chatbot, history, agent_selector],
-                        )
-                    else:
-                        input_promise = input_promise.then(
-                            self.agent_run,
-                            [chatbot, history],
-                            [chatbot, history],
-                        )
+                        input_promise.then(self.flushed, None, [input])
 
-                    input_promise.then(self.flushed, None, [input])
+                # Settings tab placeholder for extension by subclasses
+                with gr.Tab("Settings"):
+                    gr.Markdown("Settings can be customized in subclasses.")
 
             demo.load(None)
 
